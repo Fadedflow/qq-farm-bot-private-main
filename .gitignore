@@ -1,0 +1,23 @@
+node_modules/
+
+# Runtime data and local configuration
+core/data/
+.env
+.env.*
+!.env.example
+
+# Generated output
+web/dist/
+web/stats.html
+dist/
+coverage/
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+
+# OS and editor metadata
+.DS_Store
+.idea/
+.vscode/
