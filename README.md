@@ -1,4 +1,9 @@
-# QQ Farm Bot Private
+开源不易，请多多赞赏
+<img width="1152" height="1152" alt="52c7420f204bd94c811b24ec35d19dcf" src="https://github.com/user-attachments/assets/1c34ceab-2d96-4142-aa7c-b0c73492dc2e" />
+
+
+
+# QQ农场机器人 私人
 
 > 私有维护仓库。此仓库用于 QQ 农场多账号挂机工具的重构版源码维护，不包含运行时账号数据、用户数据和日志。
 
@@ -12,9 +17,9 @@
 - 前端：Vue 3 / Vite / TypeScript / Pinia / UnoCSS
 - 包管理：pnpm workspace
 - 部署：源码运行、Docker、二进制打包
-- 默认面板端口：`3007`
+- 默认面板端口：``3007``
 - 默认管理员账号：`admin`
-- 默认管理员密码：`admin`
+- 默认管理员密码：``admin``
 
 部署后请立即修改默认密码。
 
@@ -22,32 +27,32 @@
 
 **后端**
 
-[<img src="https://skillicons.dev/icons?i=nodejs" height="48" title="Node.js 20+" />](https://nodejs.org/)
-[<img src="https://skillicons.dev/icons?i=express" height="48" title="Express 4" />](https://expressjs.com/)
-[<img src="https://skillicons.dev/icons?i=socketio" height="48" title="Socket.IO 4" />](https://socket.io/)
+[<img src="https://skillicons.dev/icons?i=nodejs"height="48"title="Node.js 20+"/>](https://nodejs.org/)   
+[<img src="https://skillicons.dev/icons?i=express"height="48"title="Express 4"/>](https://expressjs.com/)   
+[<img src="https://skillicons.dev/icons?i=socketio"height="48"title="Socket.IO 4"/>](https://socket.io/)   
 
 **前端**
 
-[<img src="https://skillicons.dev/icons?i=vue" height="48" title="Vue 3" />](https://vuejs.org/)
-[<img src="https://skillicons.dev/icons?i=vite" height="48" title="Vite 7" />](https://vitejs.dev/)
-[<img src="https://skillicons.dev/icons?i=ts" height="48" title="TypeScript 5" />](https://www.typescriptlang.org/)
-[<img src="https://cdn.simpleicons.org/pinia/FFD859" height="48" title="Pinia 3" />](https://pinia.vuejs.org/)
-[<img src="https://skillicons.dev/icons?i=unocss" height="48" title="UnoCSS" />](https://unocss.dev/)
+[<img src="https://skillicons.dev/icons?i=vue"height="48"title="Vue 3"/>](https://vuejs.org/)   
+[<img src="https://skillicons.dev/icons?i=vite"height="48"title="Vite 7"/>](https://vitejs.dev/)   
+[<img src="https://skillicons.dev/icons?i=ts"height="48"title="TypeScript 5"/>](https://www.typescriptlang.org/)   
+[<img src="https://cdn.simpleicons.org/pinia/FFD859"height="48"title="Pinia 3"/>](https://pinia.vuejs.org/)   
+[<img src="https://skillicons.dev/icons?i=unocss"height="48"title="UnoCSS"/>](https://unocss.dev/)   
 
 **部署**
 
-[<img src="https://skillicons.dev/icons?i=pnpm" height="48" title="pnpm 10" />](https://pnpm.io/)
-[<img src="https://skillicons.dev/icons?i=docker" height="48" title="Docker" />](https://www.docker.com/)
+[<img src="https://skillicons.dev/icons?i=pnpm"height="48"title="pnpm 10"/>](https://pnpm.io/)   
+[<img src="https://skillicons.dev/icons?i=docker"height="48"title="Docker"/>](https://www.docker.com/)   
 
 ## 环境要求
 
 - Node.js 20+
 - pnpm，推荐通过 `corepack enable` 启用
-- Docker，可选，仅 Docker 部署时需要
+- Docker，可选，仅在使用Docker部署时需要
 
-## 快速启动
+##快速启动
 
-```powershell
+```PowerShell
 git clone https://github.com/cwser/qq-farm-bot-private.git
 cd qq-farm-bot-private
 
