@@ -72,6 +72,10 @@ const PUBLIC_API_PATHS = new Set([
   "/login",
   "/qr/create",
   "/qr/check",
+  "/yyb-qr/create",
+  "/yyb-qr/poll",
+  "/yyb-qr/confirm",
+  "/yyb-qr/get-code",
   "/proxy",
   "/card-claim/status",
   "/card-claim/claim",
@@ -84,6 +88,7 @@ const PUBLIC_API_PATHS = new Set([
   "/public/reset-password/verify",
   "/public/reset-password/confirm",
   "/health",
+  "/admin/qq-proxy/cert",
 ]);
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 const ONE_MINUTE_MS = 60 * 1000;
@@ -513,6 +518,8 @@ function startAdminServer(dataProvider) {
   });
   registerAdminQrLoginRoutes({ app });
   registerAdminProxyRoutes({ app, logger: adminLogger });
+  const { registerAdminYybLoginRoutes } = require("./admin-yyb-login-routes");
+  registerAdminYybLoginRoutes({ app, logger: adminLogger });
   registerAdminLoginLogRoutes({
     app,
     userStore,
@@ -521,6 +528,10 @@ function startAdminServer(dataProvider) {
     requireAdminRole,
     requireDangerConfirmation,
   });
+  const { registerAdminPacketCaptureRoutes } = require("./admin-packet-capture-routes");
+  registerAdminPacketCaptureRoutes({ app, requireAdminToken });
+  const { registerAdminQQProxyRoutes } = require("./admin-qq-proxy-routes");
+  registerAdminQQProxyRoutes({ app, requireAdminToken });
   registerSpaFallback(app, webDist);
 
   const subscribeSocketToAccount = (socket, accountRef = "") => {

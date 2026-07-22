@@ -10,18 +10,21 @@ export interface WxLoginConfig {
   appId: string
   autoAddAccount: boolean
   userIsolation: boolean
+  yybGoBaseUrl: string
 }
 
 export const useWxLoginStore = defineStore('wx-login', () => {
   // 默认配置
   const defaultConfig: WxLoginConfig = {
     enabled: true,
-    apiBase: 'https://code.z74d.top/api',
+    apiBase: 'http://localhost:8000',
+
     apiKey: '',
-    proxyApiUrl: 'https://code.z74d.top/api',
+    proxyApiUrl: 'http://localhost:8000',
     appId: 'wx5306c5978fdb76e4',
     autoAddAccount: true,
     userIsolation: true,
+    yybGoBaseUrl: 'http://127.0.0.1:8000',
   }
 
   // 获取当前用户ID
@@ -73,29 +76,32 @@ export const useWxLoginStore = defineStore('wx-login', () => {
   const qrCode = ref<string | null>(null)
   const qrCreatedAt = ref(0)
   const uuid = ref('')
+  const sessionId = ref('')
   const wxid = ref('')
   const status = ref<'idle' | 'qr_loading' | 'qr_ready' | 'scanning' | 'confirming' | 'code_loading' | 'success' | 'error'>('idle')
   const statusMessage = ref('')
   const errorMessage = ref('')
 
-  // 获取二维码接口地址
   const qrEndpoint = 'LoginGetQRCar'
 
-  // 重置登录状态
   function resetState() {
     qrCode.value = null
     qrCreatedAt.value = 0
     uuid.value = ''
+    sessionId.value = ''
     wxid.value = ''
     status.value = 'idle'
     statusMessage.value = ''
     errorMessage.value = ''
   }
 
-  // 判断是否需要使用代理模式（api_key 不为空）
   const useProxyMode = computed(() => !!config.value.apiKey)
 
-  // 获取代理API URL（确保有默认值）
+  const useYybGo = computed(() => {
+    const base = (config.value.yybGoBaseUrl || '').trim()
+    return base.length > 0
+  })
+
   const proxyApiUrl = computed(() =>
     (useProxyMode.value ? config.value.proxyApiUrl : config.value.apiBase)
     || defaultConfig.proxyApiUrl,
@@ -136,6 +142,28 @@ export const useWxLoginStore = defineStore('wx-login', () => {
 
     try {
       let data: any
+
+      if (useYybGo.value) {
+        const result = await fetch('/api/yyb-qr/create', { method: 'POST' })
+        data = await result.json()
+        if (data && data.code === 0 && data.data) {
+          sessionId.value = data.data.session_id
+          const img = data.data.image_base64 || data.data.image_url
+          qrCode.value = img
+          qrCreatedAt.value = Date.now()
+          status.value = 'qr_ready'
+          statusMessage.value = '请使用微信扫码登录 (yyb_go)'
+          isLoading.value = false
+          return true
+        }
+        else {
+          status.value = 'error'
+          qrCreatedAt.value = 0
+          errorMessage.value = data?.msg || 'yyb_go 获取二维码失败'
+          isLoading.value = false
+          return false
+        }
+      }
 
       if (useProxyMode.value) {
         const result = await requestProxy({ action: 'getqr' })
@@ -191,7 +219,7 @@ export const useWxLoginStore = defineStore('wx-login', () => {
 
   // 检查登录状态
   async function checkLogin(): Promise<{ success: boolean, wxid?: string, nickname?: string, avatar?: string }> {
-    if (!uuid.value) {
+    if (!uuid.value && !sessionId.value) {
       return { success: false }
     }
 
@@ -200,6 +228,44 @@ export const useWxLoginStore = defineStore('wx-login', () => {
 
     try {
       let data: any
+
+      if (useYybGo.value) {
+        const result = await fetch('/api/yyb-qr/poll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId.value }),
+        })
+        data = await result.json()
+        if (data && data.code === 0 && data.data) {
+          const pollStatus = data.data.status || ''
+
+          if (pollStatus === 'pending') {
+            status.value = 'qr_ready'
+            statusMessage.value = '等待扫码中'
+            return { success: false }
+          }
+
+          if (pollStatus === 'scanned') {
+            status.value = 'confirming'
+            statusMessage.value = '已扫码，请在手机确认登录'
+            return { success: false }
+          }
+
+          if (pollStatus === 'authorized' || pollStatus === 'confirmed') {
+            wxid.value = 'yyb_go_pending'
+            status.value = 'success'
+            statusMessage.value = '已授权，正在获取农场Code...'
+            return { success: true, wxid: 'yyb_go_pending', nickname: '', avatar: '' }
+          }
+
+          if (pollStatus === 'expired' || pollStatus === 'cancelled') {
+            status.value = 'error'
+            errorMessage.value = '二维码已过期，请重新获取'
+            return { success: false }
+          }
+        }
+        return { success: false }
+      }
 
       if (useProxyMode.value) {
         const result = await requestProxy({
@@ -281,7 +347,7 @@ export const useWxLoginStore = defineStore('wx-login', () => {
   // 获取QQ农场Code
   async function getFarmCode(wxidParam?: string): Promise<{ success: boolean, code?: string }> {
     const targetWxid = wxidParam || wxid.value
-    if (!targetWxid) {
+    if (!targetWxid && !useYybGo.value) {
       return { success: false }
     }
 
@@ -293,7 +359,53 @@ export const useWxLoginStore = defineStore('wx-login', () => {
     try {
       let data: any
 
-      if (useProxyMode.value) {
+      if (useYybGo.value) {
+        if (!sessionId.value) return { success: false }
+
+        const confirmResp = await fetch('/api/yyb-qr/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId.value }),
+        })
+        const confirmData = await confirmResp.json()
+
+        if (!confirmData || confirmData.code !== 0 || !confirmData.data) {
+          status.value = 'error'
+          errorMessage.value = confirmData?.msg || 'yyb_go 确认登录失败'
+          isLoading.value = false
+          return { success: false }
+        }
+
+        const openid = confirmData.data.openid || ''
+        if (!openid) {
+          status.value = 'error'
+          errorMessage.value = 'yyb_go 未返回 openid'
+          isLoading.value = false
+          return { success: false }
+        }
+
+        const codeResp = await fetch('/api/yyb-qr/get-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ref: openid, app_id: config.value.appId || defaultConfig.appId }),
+        })
+        const codeData = await codeResp.json()
+
+        if (codeData && codeData.code === 0 && codeData.data && codeData.data.result && codeData.data.result.code) {
+          wxid.value = openid
+          data = {
+            Success: true,
+            Data: { code: codeData.data.result.code },
+          }
+        }
+        else {
+          status.value = 'error'
+          errorMessage.value = codeData?.msg || 'yyb_go 获取 Code 失败'
+          isLoading.value = false
+          return { success: false }
+        }
+      }
+      else if (useProxyMode.value) {
         const result = await requestProxy({
           action: 'jslogin',
           wxid: targetWxid,
@@ -353,6 +465,7 @@ export const useWxLoginStore = defineStore('wx-login', () => {
     qrCode,
     qrCreatedAt,
     uuid,
+    sessionId,
     wxid,
     status,
     statusMessage,
@@ -360,6 +473,7 @@ export const useWxLoginStore = defineStore('wx-login', () => {
     qrEndpoint,
     currentUserId,
     useProxyMode,
+    useYybGo,
     resetState,
     getQRCode,
     checkLogin,

@@ -765,9 +765,9 @@ function loadGlobalConfig() {
         if (data.globalWxConfig && typeof data.globalWxConfig === 'object') {
             globalConfig.globalWxConfig = {
                 enabled: data.globalWxConfig.enabled !== false,
-                apiBase: String(data.globalWxConfig.apiBase || 'https://code.z74d.top/api').trim(),
-                apiKey: String(data.globalWxConfig.apiKey || '').trim(),
-                proxyApiUrl: String(data.globalWxConfig.proxyApiUrl || 'https://code.z74d.top/api').trim(),
+                apiBase: String(data.globalWxConfig.apiBase || 'http://localhost:8000').trim(),
+
+                proxyApiUrl: String(data.globalWxConfig.proxyApiUrl || 'http://localhost:8000').trim(),
                 appId: String(data.globalWxConfig.appId || 'wx5306c5978fdb76e4').trim(),
                 autoAddAccount: data.globalWxConfig.autoAddAccount !== false,
                 userIsolation: data.globalWxConfig.userIsolation !== false
@@ -1455,12 +1455,13 @@ function setSystemConfig(config) {
 
 const DEFAULT_WX_CONFIG = {
     enabled: false,
-    apiBase: 'https://code.z74d.top/api',
-    apiKey: '',
-    proxyApiUrl: 'https://code.z74d.top/api',
+    apiBase: 'http://localhost:8000',
+
+    proxyApiUrl: 'http://localhost:8000',
     appId: 'wx5306c5978fdb76e4',
     autoAddAccount: true,
-    userIsolation: true
+    userIsolation: true,
+    yybGoBaseUrl: 'http://127.0.0.1:8000',
 };
 
 function getGlobalWxConfig() {
@@ -1478,7 +1479,8 @@ function setGlobalWxConfig(config) {
         proxyApiUrl: String(config.proxyApiUrl || DEFAULT_WX_CONFIG.proxyApiUrl).trim(),
         appId: String(config.appId || DEFAULT_WX_CONFIG.appId).trim(),
         autoAddAccount: config.autoAddAccount !== false,
-        userIsolation: config.userIsolation !== false
+        userIsolation: config.userIsolation !== false,
+        yybGoBaseUrl: String(config.yybGoBaseUrl || DEFAULT_WX_CONFIG.yybGoBaseUrl).trim(),
     };
     saveGlobalConfig();
     return { ...globalConfig.globalWxConfig };

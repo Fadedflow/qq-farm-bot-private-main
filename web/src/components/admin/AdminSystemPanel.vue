@@ -213,7 +213,7 @@ const localWxConfig = defineModel<WxConfig>('localWxConfig', { required: true })
             v-model="localWxConfig.apiBase"
             label="API地址"
             type="text"
-            placeholder="https://code.z74d.top/api"
+            placeholder="http://localhost:8000"
             class="col-span-2"
           />
           <BaseInput
@@ -227,7 +227,7 @@ const localWxConfig = defineModel<WxConfig>('localWxConfig', { required: true })
             v-model="localWxConfig.proxyApiUrl"
             label="代理API地址"
             type="text"
-            placeholder="https://code.z74d.top/api"
+            placeholder="http://localhost:8000"
             class="col-span-2"
           />
           <BaseSwitch

@@ -31,9 +31,10 @@ const defaultSystemConfigValues: SystemConfig = {
 
 const defaultWxConfig: WxConfig = {
   enabled: true,
-  apiBase: 'https://code.z74d.top/api',
+  apiBase: 'http://localhost:8000',
+
   apiKey: '',
-  proxyApiUrl: 'https://code.z74d.top/api',
+  proxyApiUrl: 'http://localhost:8000',
   appId: 'wx5306c5978fdb76e4',
   autoAddAccount: true,
   userIsolation: true,
