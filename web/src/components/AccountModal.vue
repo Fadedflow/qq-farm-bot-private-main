@@ -19,7 +19,16 @@ const QR_AUTO_REFRESH_MS = 110_000
 
 const wxLoginStore = useWxLoginStore()
 
-const activeTab = ref<'wx' | 'manual'>('manual')
+const proxyRunning = ref(false)
+const proxyPort = ref(0)
+const proxyAddress = ref('')
+const proxyPublicAddress = ref('')
+const proxyCodes = ref<string[]>([])
+const proxyLoading = ref(false)
+const proxyPollTimer = ref<ReturnType<typeof setInterval> | null>(null)
+let proxyCodeAdded: string | null = null
+
+const activeTab = ref<'wx' | 'manual' | 'proxy'>('manual')
 const loading = ref(false)
 const wxChecking = ref(false)
 const errorMessage = ref('')
@@ -155,6 +164,73 @@ async function submitManual() {
   await addAccount(payload)
 }
 
+async function fetchProxyStatus() {
+  try {
+    const res = await api.get('/api/admin/qq-proxy/status')
+    if (res.data.ok && res.data.data) {
+      proxyRunning.value = res.data.data.running
+      proxyPort.value = res.data.data.port
+      proxyAddress.value = res.data.data.address
+      proxyPublicAddress.value = res.data.data.publicAddress || ''
+    }
+  } catch {}
+}
+
+async function startQQProxy() {
+  proxyLoading.value = true
+  try {
+    const res = await api.post('/api/admin/qq-proxy/start')
+    if (res.data.ok) {
+      await fetchProxyStatus()
+      startProxyPolling()
+    }
+  } catch {}
+  finally { proxyLoading.value = false }
+}
+
+async function stopQQProxy() {
+  try {
+    await api.post('/api/admin/qq-proxy/stop')
+    await fetchProxyStatus()
+    stopProxyPolling()
+  } catch {}
+}
+
+function startProxyPolling() {
+  stopProxyPolling()
+  proxyPollTimer.value = setInterval(async () => {
+    try {
+      const res = await api.get('/api/admin/qq-proxy/codes')
+      if (res.data.ok && res.data.data) {
+        const codes: string[] = res.data.data.codes
+        for (const code of codes) {
+          if (!proxyCodes.value.includes(code) && code !== proxyCodeAdded) {
+            proxyCodes.value.push(code)
+            proxyCodeAdded = code
+            const name = `QQ账号${Date.now()}`
+            try {
+              await addAccount({
+                name,
+                code,
+                platform: 'qq' as const,
+                loginType: 'proxy_capture',
+              })
+              proxyCodeAdded = code
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }, 2000)
+}
+
+function stopProxyPolling() {
+  if (proxyPollTimer.value) {
+    clearInterval(proxyPollTimer.value)
+    proxyPollTimer.value = null
+  }
+}
+
 const wxQrImageSrc = computed(() => {
   if (!wxLoginStore.qrCode)
     return ''
@@ -168,6 +244,7 @@ const wxQrImageSrc = computed(() => {
 function close() {
   stopWxCheck()
   wxLoginStore.resetState()
+  stopProxyPolling()
   emit('close')
 }
 
@@ -192,12 +269,15 @@ watch(() => props.show, (newVal) => {
   else {
     stopWxCheck()
     wxLoginStore.resetState()
+    stopProxyPolling()
   }
 })
 
 watch(activeTab, (tab) => {
   if (tab === 'wx')
     loadWxQRCode()
+  else if (tab === 'proxy')
+    fetchProxyStatus()
 })
 </script>
 
@@ -242,6 +322,102 @@ watch(activeTab, (tab) => {
           >
             微信扫码
           </button>
+          <button
+            v-if="!editData"
+            class="flex-1 py-2 text-center text-sm font-medium transition-colors"
+            :class="activeTab === 'proxy' ? 'border-b-2' : 'opacity-60'"
+            :style="{
+              color: activeTab === 'proxy' ? 'var(--theme-primary)' : 'var(--theme-text)',
+              borderColor: 'var(--theme-primary)',
+            }"
+            @click="activeTab = 'proxy'"
+          >
+            QQ代理抓包
+          </button>
+        </div>
+
+
+        <div v-if="activeTab === 'proxy'" class="space-y-4">
+          <div
+            class="rounded-lg p-3 text-xs"
+            :style="{ background: proxyRunning ? 'rgba(34, 197, 94, 0.1)' : 'color-mix(in srgb, var(--theme-text) 5%, transparent)', color: 'var(--theme-text)' }"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium">代理状态</span>
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                :style="{
+                  background: proxyRunning ? 'rgba(34, 197, 94, 0.15)' : 'rgba(156, 163, 175, 0.15)',
+                  color: proxyRunning ? '#16a34a' : '#9ca3af',
+                }"
+              >
+                <span class="h-1.5 w-1.5 rounded-full" :style="{ background: proxyRunning ? '#16a34a' : '#9ca3af' }" />
+                {{ proxyRunning ? '运行中' : '已停止' }}
+              </span>
+            </div>
+            <div v-if="proxyRunning" class="space-y-1 opacity-80">
+              <div>局域网代理: {{ proxyAddress }}:{{ proxyPort }}</div>
+              <div v-if="proxyPublicAddress">公网代理: {{ proxyPublicAddress }}:{{ proxyPort }}</div>
+              <div>已捕获 Code: {{ proxyCodes.length }} 个</div>
+            </div>
+            <div class="mt-2 flex gap-2">
+              <BaseButton
+                v-if="!proxyRunning"
+                variant="primary"
+                size="sm"
+                :loading="proxyLoading"
+                @click="startQQProxy"
+              >
+                开始抓取
+              </BaseButton>
+              <BaseButton
+                v-else
+                variant="outline"
+                size="sm"
+                @click="stopQQProxy"
+              >
+                停止抓取
+              </BaseButton>
+              <BaseButton
+                variant="secondary"
+                size="sm"
+                href="/api/admin/qq-proxy/cert"
+                target="_blank"
+              >
+                下载CA证书
+              </BaseButton>
+            </div>
+          </div>
+
+          <div class="rounded-lg p-3 text-xs space-y-2" :style="{ background: 'color-mix(in srgb, var(--theme-text) 5%, transparent)' }">
+            <div class="font-medium" :style="{ color: 'var(--theme-text)' }">抓包登录使用说明</div>
+            <ol class="list-decimal list-inside space-y-1 opacity-75" :style="{ color: 'var(--theme-text)' }">
+              <li>点击<span class="font-medium">开始抓取</span>，获取代理地址和端口</li>
+              <li>点击<span class="font-medium">下载CA证书</span>，在手机 Safari 打开下载链接安装证书<br/><span class="opacity-60">iPhone: 允许下载 → 设置 → 通用 → VPN与设备管理 → 安装 → 关于本机 → 证书信任设置 → 开启</span><br/><span class="opacity-60">Android: 设置 → 安全 → 加密与凭据 → 安装证书 → CA证书</span></li>
+              <li>连续添加时，先切换到目标 QQ 并彻底关闭上一个农场</li>
+              <li>将手机 Wi-Fi 代理设为显示的地址和端口</li>
+              <li>彻底关闭后重新打开对应的 QQ 或微信农场</li>
+              <li>Code 获取后账号会立即添加，QQ 好友 GID 将在后台继续同步</li>
+              <li>QQ 农场保持打开，完整好友列表同步后会立即释放代理</li>
+            </ol>
+          </div>
+
+          <div v-if="proxyCodes.length > 0" class="rounded-lg p-3 text-xs" :style="{ background: 'rgba(34, 197, 94, 0.05)', color: 'var(--theme-text)' }">
+            <div class="font-medium mb-2">已捕获的 Code</div>
+            <div
+              v-for="(code, i) in proxyCodes"
+              :key="i"
+              class="flex items-center justify-between py-1 border-b border-dashed"
+              :style="{ borderColor: 'color-mix(in srgb, var(--theme-text) 10%, transparent)' }"
+            >
+              <span class="font-mono text-xs opacity-75 truncate max-w-[200px]">{{ code }}</span>
+              <span class="text-xs" style="color: #16a34a">已添加</span>
+            </div>
+          </div>
+
+          <div class="text-center text-xs opacity-50" :style="{ color: 'var(--theme-text)' }">
+            抓取过程中请保持手机 QQ 农场打开
+          </div>
         </div>
 
         <div v-if="activeTab === 'wx'" class="space-y-4">

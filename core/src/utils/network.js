@@ -16,6 +16,7 @@ const { toLong, toNum, syncServerTime, log, logWarn } = require('./utils');
 const cryptoWasm = require('./crypto-wasm');
 const { createGatewayToken } = require('./gateway-token');
 const { TsdkRuntime } = require('./tsdk-runtime');
+const packetCapture = require('../services/packet-capture');
 
 // 延迟加载 warehouse 模块避免循环依赖
 let warehouseModule = null;
@@ -240,6 +241,11 @@ function sendMsgAsync(serviceName, methodName, bodyBytes, timeout = 20000) {
         }
 
         const seq = clientSeq;
+        const reqTimestamp = Date.now();
+        packetCapture.logRequest(
+          process.env.FARM_ACCOUNT_ID, '', serviceName, methodName,
+          bodyBytes ? bodyBytes.length : 0, seq,
+        );
         const timeoutKey = `request_timeout_${seq}`;
         let settled = false;
 
@@ -255,6 +261,11 @@ function sendMsgAsync(serviceName, methodName, bodyBytes, timeout = 20000) {
             networkScheduler.clear(timeoutKey);
             if (settled) return;
             settled = true;
+            packetCapture.logResponse(
+              process.env.FARM_ACCOUNT_ID, '', seq, serviceName, methodName,
+              !err, err ? err.message : '', body ? body.length : 0,
+              Date.now() - reqTimestamp,
+            );
             if (err) reject(err);
             else resolve({ body, meta });
         }).then((sent) => {
@@ -324,6 +335,8 @@ function handleNotify(msg) {
         const event = types.EventMessage.decode(msg.body);
         const type = event.message_type || '';
         const eventBody = event.body;
+
+        packetCapture.logNotify(process.env.FARM_ACCOUNT_ID, '', type);
 
         // 被踢下线
         if (type.includes('Kickout')) {
@@ -819,4 +832,9 @@ module.exports = {
     getWsErrorState,
     getAceStatus,
     networkEvents,
+    enablePacketCapture: packetCapture.enable,
+    disablePacketCapture: packetCapture.disable,
+    isPacketCaptureEnabled: packetCapture.isEnabled,
+    getPacketCaptureEntries: packetCapture.getEntries,
+    clearPacketCapture: packetCapture.clear,
 };

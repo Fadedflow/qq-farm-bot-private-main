@@ -1,5 +1,29 @@
 const { createScheduler } = require('../services/scheduler');
 
+// 主进程汇总的抓包缓冲区
+const MASTER_PACKET_CAPTURE_MAX = 2000;
+let masterPacketCaptureEntries = [];
+let masterPacketCaptureNextId = 1;
+
+function addMasterPacketCaptureEntries(entries) {
+    for (const entry of entries) {
+        entry._id = masterPacketCaptureNextId++;
+        masterPacketCaptureEntries.push(entry);
+    }
+    while (masterPacketCaptureEntries.length > MASTER_PACKET_CAPTURE_MAX) {
+        masterPacketCaptureEntries.shift();
+    }
+}
+
+function getMasterPacketCaptureEntries() {
+    return masterPacketCaptureEntries;
+}
+
+function clearMasterPacketCaptureEntries() {
+    masterPacketCaptureEntries = [];
+    masterPacketCaptureNextId = 1;
+}
+
 /**
  * 创建 Worker 管理器
  * 负责账号 Worker 进程/线程的启动、停止、重启、消息处理和 RPC 调用
@@ -532,6 +556,10 @@ function createWorkerManager(deps) {
                     });
                 }
             }
+        } else if (msg.type === 'packet_capture') {
+            if (Array.isArray(msg.entries)) {
+                addMasterPacketCaptureEntries(msg.entries);
+            }
         }
     }
 
@@ -580,4 +608,4 @@ function createWorkerManager(deps) {
     };
 }
 
-module.exports = { createWorkerManager };
+module.exports = { createWorkerManager, getMasterPacketCaptureEntries, clearMasterPacketCaptureEntries };

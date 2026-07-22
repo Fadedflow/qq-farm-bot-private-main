@@ -61,6 +61,7 @@ async function handleAutoAddAccount(wxid: string, nickname?: string, avatar?: st
 
     if (result.success && result.code) {
       const name = accountName.value.trim() || nickname || `微信账号${Date.now()}`
+      const realWxid = wxLoginStore.useYybGo ? wxLoginStore.wxid : wxid
 
       // 检查是否启用自动添加账号
       if (wxLoginStore.config.autoAddAccount) {
@@ -69,7 +70,7 @@ async function handleAutoAddAccount(wxid: string, nickname?: string, avatar?: st
           code: result.code,
           platform: 'wx',
           loginType: 'wx_qr',
-          wxid,
+          wxid: realWxid,
           avatar,
         })
         emit('saved')
@@ -150,6 +151,15 @@ watch(() => props.show, (newVal) => {
         <BaseButton variant="ghost" class="!p-1" @click="close">
           <div class="i-carbon-close text-xl" :style="{ color: 'var(--theme-text)' }" />
         </BaseButton>
+      </div>
+
+      <!-- 登录模式标识 -->
+      <div
+        v-if="wxLoginStore.useYybGo"
+        class="px-4 py-1.5 text-xs font-medium"
+        style="background: color-mix(in srgb, var(--theme-primary) 10%, transparent); color: var(--theme-primary);"
+      >
+        yyb_go 本地代理模式
       </div>
 
       <!-- Login Content -->

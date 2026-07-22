@@ -41,9 +41,24 @@ function createAutoCodeRefreshService(deps) {
 
     const apiKey = String(wxConfig.apiKey || '').trim();
     const appId = String(wxConfig.appId || 'wx5306c5978fdb76e4').trim();
+    const yybGoBaseUrl = String(wxConfig.yybGoBaseUrl || '').trim();
+
+    if (yybGoBaseUrl) {
+      const targetUrl = `${yybGoBaseUrl}/wxapp/getCode`;
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: wxid, app_id: appId }),
+      });
+      const data = await response.json();
+      if (data && data.code === 0 && data.data && data.data.result && data.data.result.code) {
+        return String(data.data.result.code);
+      }
+      throw new Error(data && data.msg ? data.msg : 'yyb_go 获取 Code 失败');
+    }
 
     if (apiKey) {
-      const proxyApiUrl = String(wxConfig.proxyApiUrl || 'https://code.z74d.top/api').trim();
+      const proxyApiUrl = String(wxConfig.proxyApiUrl || 'http://localhost:8000').trim();
       const targetUrl = `${proxyApiUrl  }?api_key=${  encodeURIComponent(apiKey)  }&action=jslogin`;
       const response = await fetch(targetUrl, {
         method: 'POST',
@@ -55,7 +70,7 @@ function createAutoCodeRefreshService(deps) {
       throw new Error(data && data.msg ? data.msg : '代理获取 Code 失败');
     }
 
-    const apiBase = String(wxConfig.apiBase || 'https://code.z74d.top/api').trim();
+    const apiBase = String(wxConfig.apiBase || 'http://localhost:8000').trim();
     const response = await fetch(`${apiBase  }/Wxapp/JSLogin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

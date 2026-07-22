@@ -99,11 +99,17 @@ const {
 } = require('../utils/network');
 const { loadProto } = require('../utils/proto');
 const { setLogHook, log, toNum } = require('../utils/utils');
+const packetCapture = require('../services/packet-capture');
 
 // 设置环境变量中的账号ID
 if (parentPort && workerData && workerData.accountId && !process.env.FARM_ACCOUNT_ID) {
     process.env.FARM_ACCOUNT_ID = String(workerData.accountId);
 }
+
+// 抓包数据通过 IPC 转发到主进程
+packetCapture.setForwarder((entries) => {
+    sendToMaster({ type: 'packet_capture', entries });
+});
 
 // ==================== IPC 通信 ====================
 
@@ -701,6 +707,11 @@ async function startBot(config) {
 
     // 定期同步状态
     workerScheduler.setIntervalTask('status_sync', 5000, syncStatus, { preventOverlap: true });
+
+    // 定期发送抓包数据到主进程
+    workerScheduler.setIntervalTask('packet_capture_flush', 2000, () => {
+        packetCapture.flushPending();
+    }, { preventOverlap: true });
 }
 
 async function stopBot() {

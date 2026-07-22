@@ -45,7 +45,7 @@ function registerAdminProxyRoutes({ app, logger }) {
     const apiUrl =
       req.headers["x-proxy-api-url"] ||
       process.env.WX_PROXY_API_URL ||
-      "https://code.z74d.top/api";
+      "http://localhost:8000";
     const apiKey =
       req.headers["x-proxy-api-key"] || process.env.WX_PROXY_API_KEY || "";
     const appId =
