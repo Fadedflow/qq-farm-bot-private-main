@@ -22,6 +22,7 @@ const wxLoginStore = useWxLoginStore()
 const proxyRunning = ref(false)
 const proxyPort = ref(0)
 const proxyAddress = ref('')
+const proxyPublicAddress = ref('')
 const proxyCodes = ref<string[]>([])
 const proxyLoading = ref(false)
 const proxyPollTimer = ref<ReturnType<typeof setInterval> | null>(null)
@@ -170,6 +171,7 @@ async function fetchProxyStatus() {
       proxyRunning.value = res.data.data.running
       proxyPort.value = res.data.data.port
       proxyAddress.value = res.data.data.address
+      proxyPublicAddress.value = res.data.data.publicAddress || ''
     }
   } catch {}
 }
@@ -354,7 +356,8 @@ watch(activeTab, (tab) => {
               </span>
             </div>
             <div v-if="proxyRunning" class="space-y-1 opacity-80">
-              <div>代理地址: {{ proxyAddress }}:{{ proxyPort }}</div>
+              <div>局域网代理: {{ proxyAddress }}:{{ proxyPort }}</div>
+              <div v-if="proxyPublicAddress">公网代理: {{ proxyPublicAddress }}:{{ proxyPort }}</div>
               <div>已捕获 Code: {{ proxyCodes.length }} 个</div>
             </div>
             <div class="mt-2 flex gap-2">

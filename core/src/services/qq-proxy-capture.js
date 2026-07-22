@@ -21,6 +21,7 @@ let isRunning = false;
 let caCertPem = null;
 let caKeyPem = null;
 let onCodeCaptured = null;
+let publicAddress = '';
 
 function ensureDir(dir) {
   try { fs.mkdirSync(dir, { recursive: true }); } catch {}
@@ -98,6 +99,21 @@ function getLANIP() {
     }
   }
   return '0.0.0.0';
+}
+
+function fetchPublicIP() {
+  const req = http.get('http://httpbin.org/ip', { timeout: 5000 }, (res) => {
+    let data = '';
+    res.on('data', (chunk) => { data += chunk; });
+    res.on('end', () => {
+      try {
+        const json = JSON.parse(data);
+        publicAddress = json.origin || '';
+      } catch { /* ignore */ }
+    });
+  });
+  req.on('error', () => { /* ignore */ });
+  req.setTimeout(5000, () => { req.destroy(); });
 }
 
 function parseHttpRequest(buf) {
@@ -282,6 +298,7 @@ function startProxy(callback) {
   proxyServer.listen(0, '0.0.0.0', () => {
     proxyPort = proxyServer.address().port;
     isRunning = true;
+    fetchPublicIP();
     if (callback) callback(null, proxyPort);
   });
 }
@@ -300,6 +317,7 @@ function getStatus() {
     running: isRunning,
     port: proxyPort,
     address: getLANIP(),
+    publicAddress: publicAddress,
     codeCount: capturedCodes.length,
   };
 }
